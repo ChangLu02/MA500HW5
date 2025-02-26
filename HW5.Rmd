@@ -1,0 +1,346 @@
+---
+title: "HW5"
+author: "Chang Lu"
+date: "2025-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(SDAResources)
+library(dplyr)
+library(ggplot2)
+library(tidyr)  
+```
+
+```{r}
+# question 1 
+# Given data
+p_hat <- 112 / 134
+n <- 134
+
+# Variance and standard error
+variance <- p_hat * (1 - p_hat) / n
+SE <- sqrt(variance)
+
+# 95% Confidence Interval
+z_score <- qnorm(0.975)  # for 95% confidence level
+CI_lower <- p_hat - z_score * SE
+CI_upper <- p_hat + z_score * SE
+
+# Output results
+list(
+  Proportion_Estimate = p_hat,
+  Variance = variance,
+  Standard_Error = SE,
+  Confidence_Interval = c(CI_lower, CI_upper)
+)
+```
+
+
+```{r}
+# question 4
+data(journal, package = "SDAResources")
+
+head(journal)
+colnames(journal)
+summary(journal)
+str(journal)
+```
+
+```{r}
+# Total number of articles analyzed (both probability and nonprobability)
+total_articles <- sum(journal$numemp)
+
+# Total number of articles using nonprobability sampling
+nonprob_articles <- sum(journal$nonprob)
+
+# Estimate the proportion
+p_hat <- nonprob_articles / total_articles
+
+# Display result
+p_hat
+```
+
+```{r}
+# Compute standard error
+SE <- sqrt(p_hat * (1 - p_hat) / total_articles)
+
+# Display result
+SE
+```
+
+```{r}
+# Compute confidence interval
+z_score <- qnorm(0.975)
+CI_lower <- p_hat - z_score * SE
+CI_upper <- p_hat + z_score * SE
+
+# Display result
+c(CI_lower, CI_upper)
+```
+
+```{r}
+# question 10
+data(books)
+
+head(books)
+colnames(books)
+summary(books)
+```
+
+
+```{r}
+# Perform one-way ANOVA
+anova_model <- aov(replace ~ as.factor(shelf), data = books)
+
+# Display ANOVA table
+summary(anova_model)
+```
+
+```{r}
+# Extract sum of squares from ANOVA
+anova_summary <- summary(anova_model)[[1]]
+
+SSB <- anova_summary["as.factor(shelf)", "Sum Sq"]  # Sum of Squares Between groups
+SSW <- anova_summary["Residuals", "Sum Sq"]         # Sum of Squares Within groups
+
+# Compute R-squared
+R2 <- SSB / (SSB + SSW)
+
+# Number of observations and groups
+n <- nrow(books)
+k <- length(unique(books$shelf))
+
+# Compute Adjusted R-squared
+R2_adj <- 1 - ((1 - R2) * (n - 1) / (n - k - 1))
+
+# Display results
+list(R_squared = R2, Adjusted_R_squared = R2_adj)
+```
+
+```{r}
+# Given constants
+c1 <- 10
+c2 <- 4
+
+# Compute optimal sample size per shelf
+m <- c1 + c2 * R2_adj
+
+m
+```
+
+```{r}
+# question 11
+# Given data
+sampled_claims <- 85
+fields_per_claim <- 215
+total_fields_sampled <- sampled_claims * fields_per_claim  # 85 * 215
+
+# Number of claims with different errors
+errors_distribution <- c(4, 3, rep(2, 4), rep(1, 22), rep(0, 57))
+
+# Total number of errors
+total_errors_sampled <- sum(errors_distribution)
+
+# Compute error rate per field
+p_hat <- total_errors_sampled / total_fields_sampled
+
+# Display results
+list(
+  Total_Errors_Sampled = total_errors_sampled,
+  Error_Rate = p_hat
+)
+```
+
+```{r}
+# Compute standard error
+SE <- sqrt(p_hat * (1 - p_hat) / total_fields_sampled)
+
+SE
+```
+
+```{r}
+# Total fields in the population
+total_fields_population <- 828 * 215
+
+# Estimate total number of errors
+estimated_total_errors <- p_hat * total_fields_population
+
+# Standard error for total errors
+SE_total_errors <- SE * total_fields_population
+
+list(
+  Estimated_Total_Errors = estimated_total_errors,
+  SE_Total_Errors = SE_total_errors
+)
+```
+
+```{r}
+# Compute variance under SRS
+n_SRS <- 18275
+Var_SRS <- (p_hat * (1 - p_hat)) / n_SRS
+
+Var_SRS
+```
+
+```{r}
+# Compute ratio of variances
+variance_ratio <- SE^2 / Var_SRS
+
+list(
+  Variance_Cluster = SE^2,
+  Variance_SRS = Var_SRS,
+  Variance_Ratio = variance_ratio
+)
+```
+
+```{r}
+# question 13(b)
+# Given data
+p_hat <- 0.10  # Estimated error rate per household
+ME <- 0.03  # Required margin of error
+Z <- qnorm(0.975)  # 95% confidence level (Z-score for two-tailed test)
+
+# Compute required sample size
+n_required <- (Z^2 * p_hat * (1 - p_hat)) / (ME^2)
+
+# Display result (round up to ensure sufficient sample size)
+ceiling(n_required)
+```
+
+```{r}
+data(ozone)
+
+head(ozone)
+summary(ozone)
+colnames(ozone)
+```
+
+```{r}
+# Reshape data: Convert wide format (multiple hour columns) into long format
+ozone_long <- pivot_longer(ozone, cols = starts_with("hr"), 
+                           names_to = "Hour", values_to = "Ozone")
+
+# Remove missing values
+ozone_clean <- na.omit(ozone_long$Ozone)
+
+# Compute summary statistics
+mean_ozone <- mean(ozone_clean)
+sd_ozone <- sd(ozone_clean)
+median_ozone <- median(ozone_clean)
+
+# Print summary statistics
+list(
+  Mean = mean_ozone,
+  Standard_Deviation = sd_ozone,
+  Median = median_ozone
+)
+
+# Create histogram
+ggplot(data.frame(Ozone = ozone_clean), aes(x = Ozone)) +
+  geom_histogram(binwidth = 5, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Ozone Readings",
+       x = "Ozone Levels",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+```{r}
+# (b)
+# Step 1: Select a random starting position k between 0 and 23
+set.seed(123)
+k <- sample(0:23, 1)
+
+# Step 2: Select every 24th row starting from k
+systematic_sample <- ozone_clean[seq(k + 1, length(ozone_clean), by = 24)]
+
+# Step 3: Compute summary statistics for the sample
+mean_sample <- mean(systematic_sample)
+sd_sample <- sd(systematic_sample)
+median_sample <- median(systematic_sample)
+
+# Print the results
+list(
+  Sample_Mean = mean_sample,
+  Sample_Standard_Deviation = sd_sample,
+  Sample_Median = median_sample
+)
+
+# Step 4: Create histogram of the sample
+ggplot(data.frame(Ozone = systematic_sample), aes(x = Ozone)) +
+  geom_histogram(binwidth = 5, fill = "red", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Systematic Sample (Period 24)",
+       x = "Ozone Levels",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+
+```{r}
+# Given population mean from part (a)
+population_mean <- 25.78  # This is the computed population mean
+
+# Step 1: Compute sample statistics
+sample_mean <- mean(systematic_sample)
+sample_sd <- sd(systematic_sample)
+sample_size <- length(systematic_sample)
+
+# Step 2: Compute the 95% Confidence Interval (assuming SRS)
+z_value <- qnorm(0.975)  # 95% confidence level
+SE_sample <- sample_sd / sqrt(sample_size)  # Standard error
+
+CI_lower <- sample_mean - z_value * SE_sample
+CI_upper <- sample_mean + z_value * SE_sample
+
+# Step 3: Print results
+list(
+  Sample_Mean = sample_mean,
+  Sample_Standard_Deviation = sample_sd,
+  Sample_Size = sample_size,
+  Standard_Error = SE_sample,
+  Confidence_Interval = c(CI_lower, CI_upper),
+  Contains_Population_Mean = (CI_lower <= population_mean & CI_upper >= population_mean)
+)
+```
+
+```{r}
+# Given population mean from part (a)
+population_mean <- 25.78
+
+# Step 1: Take four independent systematic samples (period 96)
+set.seed(123)  # For reproducibility
+sample_1 <- ozone_clean[seq(sample(0:95, 1) + 1, length(ozone_clean), by = 96)]
+sample_2 <- ozone_clean[seq(sample(0:95, 1) + 1, length(ozone_clean), by = 96)]
+sample_3 <- ozone_clean[seq(sample(0:95, 1) + 1, length(ozone_clean), by = 96)]
+sample_4 <- ozone_clean[seq(sample(0:95, 1) + 1, length(ozone_clean), by = 96)]
+
+# Combine the four systematic samples
+combined_sample <- c(sample_1, sample_2, sample_3, sample_4)
+
+# Step 2: Compute the sample mean and standard deviation
+sample_mean <- mean(combined_sample)
+sample_sd <- sd(combined_sample)
+sample_size <- length(combined_sample)
+
+# Step 3: Compute the standard error using cluster sampling formulas
+SE_sample <- sample_sd / sqrt(sample_size)
+
+# Step 4: Construct a 95% Confidence Interval
+z_value <- qnorm(0.975)  # 95% confidence level
+CI_lower <- sample_mean - z_value * SE_sample
+CI_upper <- sample_mean + z_value * SE_sample
+
+# Step 5: Print results
+list(
+  Sample_Mean = sample_mean,
+  Sample_Standard_Deviation = sample_sd,
+  Sample_Size = sample_size,
+  Standard_Error = SE_sample,
+  Confidence_Interval = c(CI_lower, CI_upper),
+  Contains_Population_Mean = (CI_lower <= population_mean & CI_upper >= population_mean)
+)
+```
